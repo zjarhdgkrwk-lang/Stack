@@ -11,6 +11,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.stack.feature.gate.navigation.gateScreen
+import com.stack.feature.library.navigation.LIBRARY_ROUTE
+import com.stack.feature.library.navigation.libraryScreen
 
 @Composable
 fun StackNavHost(
@@ -19,7 +21,7 @@ fun StackNavHost(
     modifier: Modifier = Modifier
 ) {
     val startDestination = if (isGateReady) {
-        NavRoutes.Library.route
+        LIBRARY_ROUTE
     } else {
         NavRoutes.Gate.route
     }
@@ -32,16 +34,18 @@ fun StackNavHost(
         // Gate screen - onboarding flow
         gateScreen(
             onGateReady = {
-                navController.navigate(NavRoutes.Library.route) {
+                navController.navigate(LIBRARY_ROUTE) {
                     popUpTo(NavRoutes.Gate.route) { inclusive = true }
                 }
             }
         )
 
-        composable(NavRoutes.Library.route) {
-            // TODO: Replace with LibraryScreen
-            PlaceholderScreen("Library")
-        }
+        // Library screen - main music browsing
+        libraryScreen(
+            onSearchClick = {
+                // TODO: Navigate to search screen (Phase 4.4)
+            }
+        )
         composable(NavRoutes.Player.route) {
             // TODO: Replace with PlayerScreen
             PlaceholderScreen("Player")

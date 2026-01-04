@@ -49,6 +49,9 @@ dependencies {
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.lifecycle.runtime.ktx)
 
+    // Coil for image loading
+    implementation(libs.coil.compose)
+
     // Testing
     testImplementation(libs.junit)
 }
