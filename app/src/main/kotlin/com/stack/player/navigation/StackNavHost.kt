@@ -6,22 +6,38 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.stack.feature.gate.navigation.gateScreen
 
 @Composable
-fun StackNavHost() {
-    val navController = rememberNavController()
+fun StackNavHost(
+    isGateReady: Boolean,
+    navController: NavHostController = rememberNavController(),
+    modifier: Modifier = Modifier
+) {
+    val startDestination = if (isGateReady) {
+        NavRoutes.Library.route
+    } else {
+        NavRoutes.Gate.route
+    }
 
     NavHost(
         navController = navController,
-        startDestination = NavRoutes.Gate.route
+        startDestination = startDestination,
+        modifier = modifier
     ) {
-        composable(NavRoutes.Gate.route) {
-            // TODO: Replace with GateScreen
-            PlaceholderScreen("Gate")
-        }
+        // Gate screen - onboarding flow
+        gateScreen(
+            onGateReady = {
+                navController.navigate(NavRoutes.Library.route) {
+                    popUpTo(NavRoutes.Gate.route) { inclusive = true }
+                }
+            }
+        )
+
         composable(NavRoutes.Library.route) {
             // TODO: Replace with LibraryScreen
             PlaceholderScreen("Library")
