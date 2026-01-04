@@ -1,0 +1,1375 @@
+# Stack 기술/기능 명세서 v2.1.1
+## (SSOT 확정용 / Phase 1 정합성 패치 반영판)
+
+---
+
+# 0. 프로젝트 개요
+
+## 0.1 기본 정보
+| 항목 | 값 |
+|------|-----|
+| 앱 이름 | Stack |
+| 패키지명 | `com.stack.player` |
+| 플랫폼 | Android |
+| minSdk | 26 |
+| targetSdk | 35 |
+| compileSdk | 35 |
+| 핵심 철학 | Document-oriented Music Archiving (Notion 톤 + 태그 기반 정리) |
+| 아키텍처 | MVVM + Clean Architecture |
+| 모듈 구조 | 멀티모듈 (:core, :data, :domain, :feature:*) |
+| 빌드 시스템 | Gradle KTS + Version Catalog |
+| JDK | 17 |
+| 지원 언어 | 한국어, English, 日本語 |
+
+## 0.2 SSOT 원칙 (빌드 안정성)
+- 라이브러리 버전은 **"한 번 고정"** 후 PR 경계에서만 업데이트
+- 도중 업그레이드/실험 브랜치 병행 금지 (컴파일/런타임 불일치 방지)
+- 모든 버전은 `libs.versions.toml`에서 단일 관리
+
+---
+
+# 1. 라이브러리 버전 매트릭스 (확정)
+
+## 1.1 Core Dependencies
+
+```toml
+[versions]
+# Build Tools
+agp = "8.7.3"
+kotlin = "2.0.21"
+ksp = "2.0.21-1.0.28"
+
+# AndroidX Core
+coreKtx = "1.15.0"
+appcompat = "1.7.0"
+activityCompose = "1.9.3"
+lifecycleRuntimeKtx = "2.8.7"
+
+# Compose
+composeBom = "2024.12.01"
+
+# Navigation
+navigation = "2.8.5"
+
+# DI
+hilt = "2.56.2"
+hiltNavigationCompose = "1.2.0"
+
+# Database
+room = "2.6.1"
+datastore = "1.1.3"
+
+# Media
+media3 = "1.5.1"
+
+# Image
+coil = "3.0.4"
+
+# Async
+coroutines = "1.9.0"
+
+# Testing
+junit = "4.13.2"
+junitVersion = "1.2.1"
+espressoCore = "3.6.1"
+```
+
+## 1.2 호환성 검증 결과
+
+| 조합 | 검증 상태 |
+|------|----------|
+| Kotlin 2.0.21 + KSP 2.0.21-1.0.28 | ✅ 호환 |
+| Kotlin 2.0.21 + Hilt 2.56.2 (KSP) | ✅ 호환 |
+| Kotlin 2.0.21 + Room 2.6.1 (KSP) | ✅ 호환 |
+| Compose BOM 2024.12.01 + Navigation 2.8.5 | ✅ 호환 |
+| AGP 8.7.3 + targetSdk 35 | ✅ 호환 |
+| Media3 1.5.1 + targetSdk 35 | ✅ 호환 |
+
+---
+
+# 2. 멀티모듈 구조
+
+## 2.1 모듈 의존성 그래프
+
+```
+app
+├── :feature:gate
+├── :feature:library
+├── :feature:player
+├── :feature:search
+├── :feature:tags
+├── :feature:playlists
+├── :feature:settings
+├── :domain
+├── :data
+└── :core
+
+:feature:* → :domain, :core
+:domain → :core (모델만)
+:data → :domain, :core
+:core → (의존성 없음)
+```
+
+## 2.2 각 모듈 책임
+
+| 모듈 | 책임 | 주요 내용 |
+|------|------|---------|
+| `:app` | 앱 진입점, DI 조립 | Application, MainActivity, NavHost |
+| `:core` | 공통 유틸리티 | Result, Dispatchers, Logger, CrashCapture, Theme, **BaseViewModel, UiState, CoreModule(DI)** |
+| `:data` | 데이터 레이어 | Room, DataStore, Repository 구현, Scanner |
+| `:domain` | 비즈니스 로직 | UseCase, Repository 인터페이스, Domain 모델 |
+| `:feature:*` | UI 레이어 | Screen, ViewModel, Components |
+
+## 2.3 상세 파일 트리
+
+```
+stack/
+├── app/
+│   ├── build.gradle.kts
+│   └── src/main/
+│       ├── AndroidManifest.xml
+│       └── kotlin/com/stack/
+│           ├── StackApplication.kt
+│           ├── MainActivity.kt
+│           ├── navigation/
+│           │   ├── StackNavHost.kt
+│           │   └── NavRoutes.kt
+│           └── di/
+│               └── AppModule.kt
+│
+├── core/
+│   ├── build.gradle.kts
+│   └── src/main/kotlin/com/stack/core/
+│       ├── base/
+│       │   ├── BaseViewModel.kt
+│       │   └── UiState.kt
+│       ├── di/
+│       │   └── CoreModule.kt
+│       ├── util/
+│       │   ├── CoroutineDispatchers.kt
+│       │   ├── Result.kt
+│       │   ├── DateTimeUtil.kt
+│       │   └── StringUtil.kt
+│       ├── logging/
+│       │   └── Logger.kt
+│       ├── crash/
+│       │   └── CrashCapture.kt
+│       └── ui/
+│           └── theme/
+│               ├── Theme.kt
+│               ├── Color.kt
+│               ├── Typography.kt
+│               ├── Spacing.kt
+│               └── Shape.kt
+│
+├── data/
+│   ├── build.gradle.kts
+│   └── src/main/kotlin/com/stack/data/
+│       ├── local/
+│       │   ├── db/
+│       │   │   ├── StackDatabase.kt
+│       │   │   ├── entity/
+│       │   │   │   ├── TrackEntity.kt
+│       │   │   │   ├── TagEntity.kt
+│       │   │   │   ├── TrackTagCrossRef.kt
+│       │   │   │   ├── PlaylistEntity.kt
+│       │   │   │   ├── PlaylistTrackCrossRef.kt
+│       │   │   │   ├── LyricsEntity.kt
+│       │   │   │   ├── LyricsFtsEntity.kt
+│       │   │   │   ├── PlayHistoryEntity.kt
+│       │   │   │   └── SourceFolderEntity.kt
+│       │   │   ├── dao/
+│       │   │   │   ├── TrackDao.kt
+│       │   │   │   ├── TrackFtsDao.kt
+│       │   │   │   ├── TagDao.kt
+│       │   │   │   ├── PlaylistDao.kt
+│       │   │   │   ├── LyricsDao.kt
+│       │   │   │   ├── PlayHistoryDao.kt
+│       │   │   │   └── SourceFolderDao.kt
+│       │   │   └── converter/
+│       │   │       └── Converters.kt
+│       │   └── prefs/
+│       │       ├── PreferencesDataStore.kt
+│       │       └── PreferencesKeys.kt
+│       ├── repository/
+│       │   ├── TrackRepositoryImpl.kt
+│       │   ├── TagRepositoryImpl.kt
+│       │   ├── PlaylistRepositoryImpl.kt
+│       │   ├── SourceFolderRepositoryImpl.kt
+│       │   ├── PlayHistoryRepositoryImpl.kt
+│       │   ├── LyricsRepositoryImpl.kt
+│       │   └── SettingsRepositoryImpl.kt
+│       ├── mapper/
+│       │   ├── TrackMapper.kt
+│       │   ├── TagMapper.kt
+│       │   └── PlaylistMapper.kt
+│       ├── scanner/
+│       │   ├── MediaStoreScanner.kt
+│       │   ├── ScanManager.kt
+│       │   ├── ContentObserverManager.kt
+│       │   └── ScanState.kt
+│       └── di/
+│           ├── DatabaseModule.kt
+│           ├── RepositoryModule.kt
+│           └── ScannerModule.kt
+│
+├── domain/
+│   ├── build.gradle.kts
+│   └── src/main/kotlin/com/stack/domain/
+│       ├── model/
+│       │   ├── Track.kt
+│       │   ├── Tag.kt
+│       │   ├── Playlist.kt
+│       │   ├── Lyrics.kt
+│       │   ├── SourceFolder.kt
+│       │   ├── PlayHistory.kt
+│       │   ├── PlaybackState.kt
+│       │   ├── QueueState.kt
+│       │   └── GateState.kt
+│       ├── repository/
+│       │   ├── TrackRepository.kt
+│       │   ├── TagRepository.kt
+│       │   ├── PlaylistRepository.kt
+│       │   ├── SourceFolderRepository.kt
+│       │   ├── PlayHistoryRepository.kt
+│       │   ├── LyricsRepository.kt
+│       │   └── SettingsRepository.kt
+│       └── usecase/
+│           ├── track/
+│           │   ├── GetTracksUseCase.kt
+│           │   ├── SearchTracksUseCase.kt
+│           │   └── DeleteTrackUseCase.kt
+│           ├── tag/
+│           │   ├── GetTagsUseCase.kt
+│           │   ├── ApplyTagsUseCase.kt
+│           │   └── GetRelatedTagsUseCase.kt
+│           ├── playlist/
+│           │   ├── GetPlaylistsUseCase.kt
+│           │   ├── CreatePlaylistUseCase.kt
+│           │   └── AddToPlaylistUseCase.kt
+│           ├── scan/
+│           │   └── ScanLibraryUseCase.kt
+│           └── history/
+│               ├── RecordPlayUseCase.kt
+│               └── GetPlayStatsUseCase.kt
+│
+├── feature/
+│   ├── gate/
+│   │   └── src/main/kotlin/com/stack/feature/gate/
+│   │       ├── GateScreen.kt
+│   │       ├── GateViewModel.kt
+│   │       ├── PermissionDeck.kt
+│   │       └── components/
+│   │           ├── PermissionCard.kt
+│   │           ├── FolderSelectCard.kt
+│   │           └── ScanProgressCard.kt
+│   │
+│   ├── library/
+│   │   └── src/main/kotlin/com/stack/feature/library/
+│   │       ├── LibraryScreen.kt
+│   │       ├── LibraryViewModel.kt
+│   │       ├── TracksTab.kt
+│   │       ├── AlbumsTab.kt
+│   │       ├── ArtistsTab.kt
+│   │       ├── FoldersTab.kt
+│   │       └── components/
+│   │           ├── TrackRow.kt
+│   │           ├── AlbumCard.kt
+│   │           ├── ArtistRow.kt
+│   │           └── FolderBreadcrumb.kt
+│   │
+│   ├── player/
+│   │   └── src/main/kotlin/com/stack/feature/player/
+│   │       ├── PlayerScreen.kt
+│   │       ├── PlayerViewModel.kt
+│   │       ├── MiniPlayer.kt
+│   │       ├── playback/
+│   │       │   ├── StackPlayer.kt
+│   │       │   ├── StackPlayerImpl.kt
+│   │       │   ├── DualPlayerManager.kt
+│   │       │   └── PlayerCallback.kt
+│   │       ├── queue/
+│   │       │   ├── PlaybackQueueManager.kt
+│   │       │   └── ShuffleManager.kt
+│   │       ├── session/
+│   │       │   ├── PlaybackSessionManager.kt
+│   │       │   └── SessionSerializer.kt
+│   │       ├── audio/
+│   │       │   ├── AudioFocusManager.kt
+│   │       │   └── NoisyReceiver.kt
+│   │       ├── service/
+│   │       │   ├── PlaybackService.kt
+│   │       │   └── NotificationProvider.kt
+│   │       └── components/
+│   │           ├── PlayerControls.kt
+│   │           ├── ProgressBar.kt
+│   │           ├── AmbientBackground.kt
+│   │           └── QueueList.kt
+│   │
+│   ├── search/
+│   │   └── src/main/kotlin/com/stack/feature/search/
+│   │       ├── SearchScreen.kt
+│   │       ├── SearchViewModel.kt
+│   │       └── components/
+│   │           ├── SearchBar.kt
+│   │           ├── FilterChips.kt
+│   │           └── SearchResults.kt
+│   │
+│   ├── tags/
+│   │   └── src/main/kotlin/com/stack/feature/tags/
+│   │       ├── TagsScreen.kt
+│   │       ├── TagsViewModel.kt
+│   │       ├── TagDetailScreen.kt
+│   │       └── components/
+│   │           ├── TagChip.kt
+│   │           ├── TagEditor.kt
+│   │           └── TagSelector.kt
+│   │
+│   ├── playlists/
+│   │   └── src/main/kotlin/com/stack/feature/playlists/
+│   │       ├── PlaylistsScreen.kt
+│   │       ├── PlaylistDetailScreen.kt
+│   │       ├── PlaylistsViewModel.kt
+│   │       └── components/
+│   │           ├── PlaylistCard.kt
+│   │           └── DraggableTrackList.kt
+│   │
+│   └── settings/
+│       └── src/main/kotlin/com/stack/feature/settings/
+│           ├── SettingsScreen.kt
+│           ├── SettingsViewModel.kt
+│           ├── StatsScreen.kt
+│           ├── CrashReportScreen.kt
+│           └── components/
+│               ├── SettingsRow.kt
+│               └── ThemePicker.kt
+│
+├── gradle/
+│   └── libs.versions.toml
+├── build.gradle.kts
+├── settings.gradle.kts
+└── docs/
+    ├── SSOT_MASTER.md
+    ├── SSOT_ARCHITECTURE.md
+    ├── SSOT_PLAYBACK.md
+    ├── SSOT_GATE.md
+    └── CODING_CONVENTIONS.md
+```
+
+---
+
+# 3. Gate(온보딩) — "권한 + SAF 소스폴더(필수) + 스캔"
+
+## 3.1 Permission Deck (카드 스와이프)
+
+| Step | 내용 | 필수 여부 |
+|------|------|----------|
+| 1 | 환영 ("당신의 음악을 기록하세요") | - |
+| 2 | 미디어 접근 권한 | 필수 |
+| 3 | 알림 권한 (Android 13+) | 권장 |
+| 4 | 소스 폴더 선택 (SAF) | 필수 |
+| 5 | 스캔 진행 | 자동 |
+
+### 권한 상세
+
+| API Level | 미디어 권한 |
+|-----------|-----------|
+| Android 13+ (API 33+) | `READ_MEDIA_AUDIO` |
+| Android 12 이하 | `READ_EXTERNAL_STORAGE` |
+
+### SAF 소스폴더
+
+- 사용자는 **1개 이상**의 폴더(Tree URI)를 선택해야 함
+- 선택된 폴더는 **Persisted URI Permission**으로 저장 (재부팅/재실행 유지)
+- `ContentResolver.takePersistableUriPermission()` 사용
+
+## 3.2 GateReady 정의 (엄격)
+
+```kotlin
+data class GateState(
+    val hasMediaPermission: Boolean,
+    val hasNotificationPermission: Boolean, // 선택적
+    val sourceFolderCount: Int,
+    val scanState: ScanState
+) {
+    val isGateReady: Boolean
+        get() = hasMediaPermission && sourceFolderCount >= 1
+}
+```
+
+### GateReady 이전 제한
+
+- 라이브러리/검색/플레이어/미니플레이어/세션 복원 UI **노출 금지**
+- 모든 NavRoute는 `GateReady` 체크 후 진입
+
+### GateReady 순간 정책
+
+1. 세션 복원은 **"항상 Pause 상태"**
+2. 초기 풀스캔 **1회** 트리거
+3. "세션이 일시정지 상태로 복원됨" **1회 안내** (스낵바, 과장 금지)
+
+## 3.3 실패/거부 UX
+
+| 상황 | UX |
+|------|-----|
+| 권한 거부 | "음악 접근 권한이 필요합니다" + [설정으로 이동] 버튼 1개 |
+| 폴더 미선택 | "음악이 있는 폴더를 선택해야 합니다" + [폴더 선택] 버튼 1개 |
+| 스캔 실패 | 오류 원인별 + [재시도] 버튼 1개 |
+| 권한 영구 거부 | 설정 앱으로 안내 (Intent) |
+
+---
+
+# 4. 저장소 접근/폴더 탭
+
+## 4.1 원칙
+
+- 내부 로직의 정본 URI: **SAF Tree URI + MediaStore contentUri**
+- UI 표시 경로: **사용자가 선택한 폴더 트리 기준**으로 실경로처럼 구성
+
+## 4.2 경로 표시 정책 (우선순위)
+
+| 우선순위 | 방식 | 예시 |
+|---------|------|------|
+| 1 | SAF 트리에서의 상대 경로 Breadcrumb | `Storage / Music / Pop / 1990s` |
+| 2 | MediaStore RELATIVE_PATH 조합 | `Internal Storage / Music / Pop` |
+| 3 | 경로 계산 불가 시 축약 | `Storage / ... / <FolderName>` |
+
+### 절대 금지
+
+- 실제 절대경로 획득을 위한 비표준/불안정 해킹
+
+---
+
+# 5. 스캔·동기화 정책
+
+## 5.1 스캔 트리거
+
+| 트리거 | 동작 |
+|--------|------|
+| 앱 시작 | 증분 스캔 (자동) |
+| MediaStore 변경 감지 | 디바운스 후 증분 스캔 큐 적재 |
+| 당겨서 새로고침 | 즉시 증분 스캔 |
+| 소스폴더 추가 | 해당 폴더 풀스캔 |
+
+## 5.2 식별/중복 판정
+
+```kotlin
+// 트랙 식별 기준
+data class TrackIdentifier(
+    val contentUri: Uri,      // 주키
+    val size: Long,           // 보조키
+    val dateModified: Long    // 보조키
+)
+```
+
+| 조건 | 판정 |
+|------|------|
+| 동일 contentUri | 동일 트랙 |
+| contentUri 다름 + (size, dateModified 동일) | "의심 중복" 마킹, 별개 트랙 취급 |
+
+> 중복 병합 기능은 **MVP 이후** (Phase 2+)
+
+## 5.3 삭제/이동 감지 (Ghost 정책)
+
+```kotlin
+enum class TrackStatus {
+    ACTIVE,    // 정상
+    GHOST,     // 접근 불가 (삭제/이동 추정)
+    DELETED    // 사용자가 삭제 확정
+}
+```
+
+| 상황 | 동작 |
+|------|------|
+| contentUri 접근 불가 | `GHOST` 상태로 마킹 |
+| Ghost 트랙 존재 | 라이브러리 상단 "정리 필요" 배너 |
+| 배너 액션 | [일괄 제거] / [재스캔] |
+| Ghost 트랙 기본 동작 | 검색/자동재생/큐 구성에서 **제외** |
+
+## 5.4 성능/안정성 규칙
+
+| 규칙 | 구현 |
+|------|------|
+| 스캔 스레드 | `Dispatchers.IO` + 취소 가능 |
+| 중복 요청 방지 | `MutexGuard` 단일 스캔 파이프라인 |
+| UI 업데이트 | Flow + `sample(100ms)` / `throttleLatest` |
+| 스캔 디바운스 | **3초** (SSOT 확정) |
+
+---
+
+# 6. 데이터 모델/DB
+
+## 6.1 DB 기본 설정
+
+| 항목 | 값 |
+|------|-----|
+| DB 파일 이름 | `stack_database` |
+| schemaVersion | 1 (초기) |
+| FTS 토큰화 | `unicode61` |
+| 자동 마이그레이션 | Room AutoMigration 활용 |
+
+## 6.2 Entity 상세
+
+### TrackEntity
+
+```kotlin
+@Entity(
+    tableName = "tracks",
+    indices = [
+        Index("content_uri", unique = true),
+        Index("album_id"),
+        Index("artist_id"),
+        Index("folder_path"),
+        Index("status")
+    ]
+)
+data class TrackEntity(
+    @PrimaryKey(autoGenerate = true)
+    val id: Long = 0,
+    
+    // 식별자
+    @ColumnInfo(name = "content_uri")
+    val contentUri: String,
+    
+    // 메타데이터
+    val title: String,
+    val artist: String?,
+    @ColumnInfo(name = "album_artist")
+    val albumArtist: String?,
+    val album: String?,
+    @ColumnInfo(name = "album_id")
+    val albumId: Long?,
+    @ColumnInfo(name = "artist_id") 
+    val artistId: Long?,
+    val genre: String?,
+    val year: Int?,
+    @ColumnInfo(name = "track_number")
+    val trackNumber: Int?,
+    @ColumnInfo(name = "disc_number")
+    val discNumber: Int?,
+    
+    // 파일 정보
+    val duration: Long,           // ms
+    val size: Long,               // bytes
+    @ColumnInfo(name = "bit_rate")
+    val bitRate: Int?,            // kbps
+    @ColumnInfo(name = "sample_rate")
+    val sampleRate: Int?,         // Hz
+    @ColumnInfo(name = "mime_type")
+    val mimeType: String,
+    
+    // 경로 정보
+    @ColumnInfo(name = "folder_path")
+    val folderPath: String,
+    @ColumnInfo(name = "file_name")
+    val fileName: String,
+    @ColumnInfo(name = "display_path")
+    val displayPath: String,      // UI 표시용
+    
+    // 앨범아트
+    @ColumnInfo(name = "album_art_uri")
+    val albumArtUri: String?,
+    
+    // 상태
+    val status: TrackStatus = TrackStatus.ACTIVE,
+    
+    // 타임스탬프
+    @ColumnInfo(name = "date_added")
+    val dateAdded: Long,          // 앱에 추가된 시간
+    @ColumnInfo(name = "date_modified")
+    val dateModified: Long,       // 파일 수정 시간
+    @ColumnInfo(name = "last_scanned")
+    val lastScanned: Long         // 마지막 스캔 시간
+)
+```
+
+### TrackFtsEntity (FTS5 검색용)
+
+```kotlin
+@Entity(tableName = "tracks_fts")
+@Fts4(contentEntity = TrackEntity::class)
+data class TrackFtsEntity(
+    val title: String,
+    val artist: String?,
+    val album: String?,
+    @ColumnInfo(name = "album_artist")
+    val albumArtist: String?
+)
+```
+
+### TagEntity
+
+```kotlin
+@Entity(
+    tableName = "tags",
+    indices = [Index("name", unique = true)]
+)
+data class TagEntity(
+    @PrimaryKey(autoGenerate = true)
+    val id: Long = 0,
+    val name: String,
+    val color: Int,               // ARGB
+    @ColumnInfo(name = "is_system")
+    val isSystem: Boolean = false,
+    @ColumnInfo(name = "system_type")
+    val systemType: SystemTagType? = null,
+    @ColumnInfo(name = "created_at")
+    val createdAt: Long,
+    @ColumnInfo(name = "updated_at")
+    val updatedAt: Long
+)
+
+enum class SystemTagType {
+    FAVORITE,       // ❤️ 좋아요
+    RECENT_PLAY,    // 🕐 최근 재생
+    RECENT_ADD,     // 🆕 최근 추가
+    MOST_PLAYED     // 🔥 많이 재생
+}
+```
+
+### TrackTagCrossRef (Track-Tag M:N 관계)
+
+```kotlin
+@Entity(
+    tableName = "track_tag_cross_ref",
+    primaryKeys = ["track_id", "tag_id"],
+    foreignKeys = [
+        ForeignKey(
+            entity = TrackEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["track_id"],
+            onDelete = ForeignKey.CASCADE
+        ),
+        ForeignKey(
+            entity = TagEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["tag_id"],
+            onDelete = ForeignKey.CASCADE
+        )
+    ],
+    indices = [
+        Index("track_id"),
+        Index("tag_id")
+    ]
+)
+data class TrackTagCrossRef(
+    @ColumnInfo(name = "track_id")
+    val trackId: Long,
+    @ColumnInfo(name = "tag_id")
+    val tagId: Long,
+    @ColumnInfo(name = "tagged_at")
+    val taggedAt: Long = System.currentTimeMillis()
+)
+```
+
+### PlaylistEntity
+
+```kotlin
+@Entity(
+    tableName = "playlists",
+    indices = [Index("name")]
+)
+data class PlaylistEntity(
+    @PrimaryKey(autoGenerate = true)
+    val id: Long = 0,
+    val name: String,
+    val description: String?,
+    @ColumnInfo(name = "cover_art_uri")
+    val coverArtUri: String?,
+    @ColumnInfo(name = "is_smart_playlist")
+    val isSmartPlaylist: Boolean = false,
+    @ColumnInfo(name = "smart_criteria")
+    val smartCriteria: String? = null,  // JSON for smart playlist rules
+    @ColumnInfo(name = "created_at")
+    val createdAt: Long,
+    @ColumnInfo(name = "updated_at")
+    val updatedAt: Long
+)
+```
+
+### PlaylistTrackCrossRef (Playlist-Track M:N 관계)
+
+```kotlin
+@Entity(
+    tableName = "playlist_track_cross_ref",
+    primaryKeys = ["playlist_id", "track_id"],
+    foreignKeys = [
+        ForeignKey(
+            entity = PlaylistEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["playlist_id"],
+            onDelete = ForeignKey.CASCADE
+        ),
+        ForeignKey(
+            entity = TrackEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["track_id"],
+            onDelete = ForeignKey.CASCADE
+        )
+    ],
+    indices = [
+        Index("playlist_id"),
+        Index("track_id"),
+        Index("position")
+    ]
+)
+data class PlaylistTrackCrossRef(
+    @ColumnInfo(name = "playlist_id")
+    val playlistId: Long,
+    @ColumnInfo(name = "track_id")
+    val trackId: Long,
+    val position: Int,
+    @ColumnInfo(name = "added_at")
+    val addedAt: Long = System.currentTimeMillis()
+)
+```
+
+### SourceFolderEntity
+
+```kotlin
+@Entity(
+    tableName = "source_folders",
+    indices = [Index("tree_uri", unique = true)]
+)
+data class SourceFolderEntity(
+    @PrimaryKey(autoGenerate = true)
+    val id: Long = 0,
+    @ColumnInfo(name = "tree_uri")
+    val treeUri: String,
+    @ColumnInfo(name = "display_name")
+    val displayName: String,
+    @ColumnInfo(name = "display_path")
+    val displayPath: String,
+    @ColumnInfo(name = "track_count")
+    val trackCount: Int = 0,
+    @ColumnInfo(name = "last_scanned")
+    val lastScanned: Long? = null,
+    @ColumnInfo(name = "added_at")
+    val addedAt: Long,
+    @ColumnInfo(name = "is_active")
+    val isActive: Boolean = true
+)
+```
+
+### PlayHistoryEntity
+
+```kotlin
+@Entity(
+    tableName = "play_history",
+    foreignKeys = [
+        ForeignKey(
+            entity = TrackEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["track_id"],
+            onDelete = ForeignKey.CASCADE
+        )
+    ],
+    indices = [
+        Index("track_id"),
+        Index("played_at"),
+        Index("week_key")
+    ]
+)
+data class PlayHistoryEntity(
+    @PrimaryKey(autoGenerate = true)
+    val id: Long = 0,
+    @ColumnInfo(name = "track_id")
+    val trackId: Long,
+    @ColumnInfo(name = "played_at")
+    val playedAt: Long,           // 재생 시작 시간
+    @ColumnInfo(name = "played_duration")
+    val playedDuration: Long,     // 실제 재생 시간 (ms)
+    @ColumnInfo(name = "completed")
+    val completed: Boolean,       // 끝까지 재생 여부
+    @ColumnInfo(name = "week_key")
+    val weekKey: String           // "2025-W01" 형식 (주간 집계용)
+)
+```
+
+### LyricsEntity & LyricsFtsEntity
+
+```kotlin
+@Entity(
+    tableName = "lyrics",
+    foreignKeys = [
+        ForeignKey(
+            entity = TrackEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["track_id"],
+            onDelete = ForeignKey.CASCADE
+        )
+    ],
+    indices = [Index("track_id", unique = true)]
+)
+data class LyricsEntity(
+    @PrimaryKey(autoGenerate = true)
+    val id: Long = 0,
+    @ColumnInfo(name = "track_id")
+    val trackId: Long,
+    val content: String,          // 가사 원문
+    @ColumnInfo(name = "is_synced")
+    val isSynced: Boolean,        // LRC 시간 동기화 여부
+    @ColumnInfo(name = "lrc_data")
+    val lrcData: String?,         // LRC 파싱 데이터 (JSON)
+    val source: LyricsSource,
+    @ColumnInfo(name = "updated_at")
+    val updatedAt: Long
+)
+
+enum class LyricsSource {
+    EMBEDDED,      // 파일 내장
+    SIDECAR_LRC,   // .lrc 파일
+    USER_INPUT,    // 사용자 입력
+    IMPORTED       // 외부 가져오기
+}
+
+// 가사 검색용 별도 FTS 테이블
+@Entity(tableName = "lyrics_fts")
+@Fts4(contentEntity = LyricsEntity::class)
+data class LyricsFtsEntity(
+    val content: String
+)
+```
+
+## 6.3 시스템 태그 (확정)
+
+| 태그 | 타입 | 조건 | 아이콘 |
+|------|------|------|-------|
+| 좋아요 | `FAVORITE` | 사용자 수동 | ❤️ |
+| 최근 재생 | `RECENT_PLAY` | 최근 **30일** 내 재생 | 🕐 |
+| 최근 추가 | `RECENT_ADD` | 최근 **30일** 내 추가 | 🆕 |
+| 많이 재생 | `MOST_PLAYED` | 재생 횟수 상위, 최대 **100곡** | 🔥 |
+
+### 시스템 태그 보호 정책
+
+- `isSystem = true`인 태그는 **삭제 불가**
+- 이름 변경/병합 **기본 금지** (Phase 2에서 "표시 이름만 변경" 검토)
+
+## 6.4 재생기록 정책 (확정)
+
+| 항목 | 값 |
+|------|-----|
+| 기본 보관 기간 | **365일** |
+| 상세 기록 기간 | 최근 **30일** (일 단위) |
+| 집계 기록 | 30일 이상은 **주 단위** 집계 |
+| 정리 주기 | 앱 시작 시 / 1일 1회 |
+
+```kotlin
+// 재생기록 조회 예시
+interface PlayHistoryRepository {
+    // 최근 30일: 일별 상세
+    fun getDetailedHistory(days: Int = 30): Flow<List<PlayHistory>>
+    
+    // 30일 이상: 주간 집계
+    fun getWeeklyStats(startDate: LocalDate, endDate: LocalDate): Flow<List<WeeklyStat>>
+}
+```
+
+## 6.5 검색 인덱스 (확정)
+
+| 대상 | FTS 적용 | 테이블 |
+|------|---------|--------|
+| 제목/아티스트/앨범 | ✅ | `tracks_fts` |
+| 태그 이름 | ❌ (LIKE 검색) | `tags` |
+| 가사 | ✅ (별도) | `lyrics_fts` |
+
+### 가사 인덱싱 (확정)
+
+- 기본값: **ON**
+- 별도 테이블로 분리 (메인 검색 영향 차단)
+- 초기 스캔 이후 **백그라운드**에서 구축
+
+---
+
+# 7. 파일 쓰기 정책 — "가사(LRC)만"
+
+## 7.1 원칙
+
+| 데이터 | 저장 위치 |
+|--------|----------|
+| 태그 | DB 정본 (파일 쓰기 금지) |
+| 플레이리스트 | DB 정본 (파일 쓰기 금지) |
+| 재생기록 | DB 정본 (파일 쓰기 금지) |
+| **가사** | DB + LRC 파일 (예외) |
+
+## 7.2 가사 LRC 정책
+
+### 가져오기
+
+1. 동일 폴더의 sidecar `.lrc` 파일 자동 탐색
+2. 사용자 파일 선택 (SAF)
+
+### 저장하기
+
+| 조건 | 동작 |
+|------|------|
+| SAF 소스폴더 내부 + 쓰기 권한 유지 | 동일 폴더에 `.lrc` 저장/갱신 |
+| 그 외 | "내보내기(위치 선택)"로 저장 |
+
+### 충돌 규칙
+
+| 상황 | 기본 동작 | 추가 옵션 (Phase 2) |
+|------|----------|-------------------|
+| DB 가사 + LRC 파일 둘 다 존재 | DB 우선 (편집본 보호) | "LRC로 덮어쓰기" / "DB 유지" 선택 |
+
+---
+
+# 8. 플레이어/오디오 정책
+
+## 8.1 엔진 기본
+
+- **Media3** 기반 백그라운드 재생
+- **MediaSessionService** + 알림 컨트롤 (MediaStyle)
+
+### 큐 교체 규칙
+
+| 액션 | 동작 |
+|------|------|
+| 곡 탭에서 곡 클릭 | 현재 큐를 해당 곡 중심으로 교체 후 재생 |
+| 앨범에서 곡 클릭 | 앨범 전체 큐로 교체, 클릭 곡부터 재생 |
+| 플레이리스트에서 곡 클릭 | 플레이리스트 전체 큐로 교체, 클릭 곡부터 재생 |
+
+## 8.2 오프로드 vs DSP 우선순위
+
+```kotlin
+data class PlaybackConfig(
+    val offloadEnabled: Boolean = false,  // 배터리 절약
+    val crossfadeEnabled: Boolean = false,
+    val speedPitchEnabled: Boolean = false,
+    val silenceSkipEnabled: Boolean = false,
+    val eqEnabled: Boolean = false
+)
+```
+
+| 오프로드 상태 | DSP 기능 | 토스트 메시지 |
+|-------------|---------|-------------|
+| OFF (기본) | 모두 사용 가능 | - |
+| ON | 자동 OFF | "배터리 절약 모드에서 고급 오디오 기능이 비활성화됩니다" |
+
+### 비활성 사유 표시
+
+- 플레이어 고급 패널: 회색 처리 + 툴팁
+- 설정 화면: "오프로드 활성화로 인해 사용 불가" 고정 표시
+
+## 8.3 크로스페이드 (듀얼 플레이어)
+
+### Lazy Player 정책
+
+```kotlin
+class DualPlayerManager {
+    private var playerA: ExoPlayer  // 항상 유지
+    private var playerB: ExoPlayer? = null  // 필요 시 생성
+    
+    fun prepareNextTrack(track: Track) {
+        // 트랙 전환 직전에만 Player B 생성/준비
+        playerB = createPlayer()
+        playerB?.prepare(track)
+    }
+    
+    fun executeCrossfade() {
+        // 겹침 재생 완료 후 B 해제
+        playerA.fadeOut()
+        playerB?.fadeIn()
+        // swap
+        playerA = playerB!!
+        playerB = null
+    }
+}
+```
+
+### 충돌 규칙
+
+| 크로스페이드 ON 시 | 제한 |
+|------------------|------|
+| Gapless Playback | 자동 OFF |
+| 오프로드 | 자동 OFF |
+| 일부 DSP | 조합에 따라 제한 |
+
+> "자동 OFF + 사유 표시"로 통일 (조용한 실패 금지)
+
+## 8.4 셔플/반복
+
+| 기능 | 동작 |
+|------|------|
+| 셔플 | 완전 랜덤 (Fisher-Yates) |
+| 반복 | 전체 / 한곡 / 끔 |
+| 이전 곡 (3초 룰) | ≤3초: 이전 곡 / >3초: 현재 곡 처음 |
+
+---
+
+# 9. UI/UX 정책
+
+## 9.1 적응형 레이아웃
+
+### Compact (스마트폰)
+
+```
+┌─────────────────────┐
+│      TopBar         │
+├─────────────────────┤
+│                     │
+│      Content        │
+│                     │
+├─────────────────────┤
+│     MiniPlayer      │
+├─────────────────────┤
+│     BottomNav       │
+└─────────────────────┘
+```
+
+### Expanded (태블릿/폴더블)
+
+```
+┌─────────────────────────────────────┐
+│              TopBar                 │
+├──────────────────┬──────────────────┤
+│                  │                  │
+│     Content      │   PlayerScreen   │
+│    (왼쪽 Pane)   │   (오른쪽 고정)  │
+│                  │                  │
+├──────────────────┴──────────────────┤
+│            BottomNav                │
+└─────────────────────────────────────┘
+```
+
+### Expanded 뒤로가기 정책
+
+- 오른쪽 Player는 **고정** (뒤로가기 대상 아님)
+- 왼쪽 Pane에서만 뒤로가기 네비게이션 동작
+- 뒤로가기 불필요 상태에서는 버튼 숨김
+
+## 9.2 미니 플레이어
+
+| 제스처 | 동작 |
+|--------|------|
+| 좌/우 스와이프 | 곡 변경 |
+| 탭 | 메인 플레이어 진입 |
+| 위로 스와이프 | 플레이어 확장 |
+
+## 9.3 튜토리얼 오버레이
+
+- **최초 1회** 자동 노출
+- 설정에서 "다시 보기" 제공
+- 오버레이 구성: "다음" 버튼 + "다시 보지 않기" 토글
+- 기능 방해 **최소화**
+
+## 9.4 기본값 (확정)
+
+| 항목 | 기본값 |
+|------|--------|
+| 테마 | 시스템 |
+| Dynamic Color | OFF (커스텀 팔레트 우선) |
+| 정렬 순서 | 추가일 (최신순) |
+| 페이징 사이즈 | 50개 |
+| 이미지 캐시 | 256MB |
+
+## 9.5 테마 색상 팔레트 (확정)
+
+### Light Theme: "Soft Archiving"
+
+| 역할 | 이름 | Hex | 용도 |
+|------|------|-----|------|
+| Background | RicePaper | `#F9F5EC` | 메인 배경 |
+| Surface | CloudyBeige | `#EBE6DC` | 카드, 시트 배경 |
+| OnBackground | SootBlack | `#2D2A26` | 주요 텍스트 |
+| Primary | Persimmon | `#E06F45` | 강조, 버튼, 액션 |
+| Secondary | FadedDenim | `#5D7582` | 보조 텍스트, 아이콘 |
+
+### Dark Theme: "Midnight Archive"
+
+| 역할 | 이름 | Hex | 용도 |
+|------|------|-----|------|
+| Background | WarmCharcoal | `#1E1C1B` | 메인 배경 |
+| Surface | DarkEspresso | `#2C2826` | 카드, 시트 배경 |
+| OnBackground | OldPaper | `#EBE6DC` | 주요 텍스트 |
+| Primary | LuminousPersimmon | `#E87A54` | 강조, 버튼, 액션 |
+| Secondary | AshBlue | `#8DA3B0` | 보조 텍스트, 아이콘 |
+
+### Color.kt 구현
+
+```kotlin
+// Light Theme Colors
+val RicePaper = Color(0xFFF9F5EC)
+val CloudyBeige = Color(0xFFEBE6DC)
+val SootBlack = Color(0xFF2D2A26)
+val Persimmon = Color(0xFFE06F45)
+val FadedDenim = Color(0xFF5D7582)
+
+// Dark Theme Colors
+val WarmCharcoal = Color(0xFF1E1C1B)
+val DarkEspresso = Color(0xFF2C2826)
+val OldPaper = Color(0xFFEBE6DC)
+val LuminousPersimmon = Color(0xFFE87A54)
+val AshBlue = Color(0xFF8DA3B0)
+
+// Color Scheme
+val LightColorScheme = lightColorScheme(
+    primary = Persimmon,
+    onPrimary = RicePaper,
+    secondary = FadedDenim,
+    onSecondary = RicePaper,
+    background = RicePaper,
+    onBackground = SootBlack,
+    surface = CloudyBeige,
+    onSurface = SootBlack,
+    surfaceVariant = CloudyBeige,
+    onSurfaceVariant = SootBlack.copy(alpha = 0.7f)
+)
+
+val DarkColorScheme = darkColorScheme(
+    primary = LuminousPersimmon,
+    onPrimary = WarmCharcoal,
+    secondary = AshBlue,
+    onSecondary = WarmCharcoal,
+    background = WarmCharcoal,
+    onBackground = OldPaper,
+    surface = DarkEspresso,
+    onSurface = OldPaper,
+    surfaceVariant = DarkEspresso,
+    onSurfaceVariant = OldPaper.copy(alpha = 0.7f)
+)
+```
+
+---
+
+# 10. 백업/복원
+
+## 10.1 저장 위치
+
+- **SAF**로 사용자 선택
+
+## 10.2 포맷
+
+```
+stack_backup_20250103/
+├── metadata.json      # schemaVersion 필수
+├── playlists.m3u8     # 플레이리스트
+├── tags.json          # 태그 데이터
+├── settings.json      # 설정
+└── lyrics/            # (옵션) LRC 모음
+    ├── track_001.lrc
+    └── ...
+```
+
+### metadata.json 구조
+
+```json
+{
+  "schemaVersion": 1,
+  "appVersion": "1.0.0",
+  "exportedAt": "2025-01-03T12:00:00Z",
+  "trackCount": 1500,
+  "playlistCount": 10,
+  "tagCount": 25
+}
+```
+
+## 10.3 복원 정책 (확정)
+
+| 항목 | 기본값 |
+|------|--------|
+| 복원 방식 | **병합** (merge) |
+| schemaVersion 호환 | 최소 2개 이전 버전 지원 |
+
+### 병합 규칙
+
+| 데이터 | 충돌 시 |
+|--------|--------|
+| 태그 | 이름 동일 → 기존 유지, 새 태그만 추가 |
+| 플레이리스트 | 이름 동일 → "(복원)" 접미사 추가 |
+| 설정 | 백업 값으로 덮어쓰기 |
+
+---
+
+# 11. Edge Case 처리 매트릭스
+
+## 11.1 스캔 관련
+
+| 상황 | 동작 |
+|------|------|
+| 스캔 중 앱 종료 | 중단 지점 저장, 다음 실행 시 재개 |
+| 스캔 중 네트워크 변경 | 영향 없음 (로컬 스캔) |
+| 대용량 라이브러리 (20,000+) | 배치 처리 + 진행률 표시 |
+| MediaStore 접근 실패 | 재시도 3회 후 에러 표시 |
+
+## 11.2 재생 관련
+
+| 상황 | 동작 |
+|------|------|
+| 재생 중 해당 트랙 삭제 | 다음 곡으로 자동 전환 |
+| 큐 트랙이 Ghost 됨 | 자동 스킵 + 토스트 "트랙을 찾을 수 없습니다" |
+| 오디오 포커스 일시 손실 | Ducking 가능 시 ducking, 불가 시 pause |
+| 오디오 포커스 완전 손실 | 일시정지 |
+| 이어폰 뽑힘 (NOISY) | 일시정지 |
+| 프로세스 kill 후 복귀 | 세션 복원 (pause 상태) |
+| 재생 중 스캔 실행 | 병렬 실행 (DB lock 관리) |
+
+## 11.3 저장소 관련
+
+| 상황 | 동작 |
+|------|------|
+| 저장 공간 부족 (백업) | 실패 + "N MB 필요" 안내 |
+| SAF 권한 만료 | Gate 화면으로 이동 + 재선택 요청 |
+| DB 손상 | 자동 복구 시도 → 실패 시 초기화 옵션 |
+
+---
+
+# 12. 상태 관리 정책
+
+## 12.1 ViewModel 상태
+
+```kotlin
+// 기본 패턴
+class ExampleViewModel @Inject constructor(
+    private val savedStateHandle: SavedStateHandle,
+    private val useCase: ExampleUseCase
+) : ViewModel() {
+    
+    private val _uiState = MutableStateFlow(ExampleUiState())
+    val uiState: StateFlow<ExampleUiState> = _uiState.asStateFlow()
+    
+    // 프로세스 kill 복구용
+    private val restoredData: String? = savedStateHandle["key"]
+}
+```
+
+## 12.2 프로세스 복구
+
+| 데이터 | 저장 위치 | 복구 |
+|--------|----------|------|
+| 재생 세션 | DataStore | 자동 복원 (pause 상태) |
+| 네비게이션 상태 | SavedStateHandle | 자동 복원 |
+| 스크롤 위치 | SavedStateHandle | 자동 복원 |
+| 검색 쿼리 | SavedStateHandle | 자동 복원 |
+
+## 12.3 Result 패턴
+
+```kotlin
+sealed class Result<out T> {
+    data class Success<T>(val data: T) : Result<T>()
+    data class Error(val exception: Throwable) : Result<Nothing>()
+    object Loading : Result<Nothing>()
+}
+```
+
+---
+
+# 13. 진단/안정성
+
+## 13.1 Crash Capture
+
+- 앱 내 "최근 크래시 보기" 기본 탑재
+- 크래시 로그 최대 10개 보관
+- 설정에서 "개발자에게 보내기" 옵션
+
+## 13.2 동시성 규칙
+
+| 영역 | 규칙 |
+|------|------|
+| 스캔 | 단일 파이프라인 (`Mutex`) |
+| 플레이어 상태 변경 | 단일 Dispatcher에서만 수행 |
+| DB 쓰기 | Room 내부 관리 (WAL 모드) |
+
+## 13.3 고위험 작업
+
+| 작업 | 요구사항 |
+|------|---------|
+| 트랙 삭제 | 확인 다이얼로그 + 취소 버튼 |
+| 백업/복원 | 진행 표시 + 취소 가능 |
+| 전체 초기화 | 2단계 확인 |
+
+---
+
+# 14. 성능 목표
+
+| 지표 | 목표 |
+|------|------|
+| 앱 콜드 스타트 | < 1.5초 |
+| 스캔 속도 (1,000곡) | < 10초 |
+| 검색 응답 (FTS) | < 100ms |
+| 리스트 스크롤 | 60fps 유지 |
+| 메모리 사용량 | < 200MB (idle) |
+
+---
+
+# 15. 접근성 정책
+
+| 항목 | 요구사항 |
+|------|---------|
+| 터치 타겟 | 최소 48dp × 48dp |
+| 색상 대비 | WCAG AA (4.5:1) |
+| TalkBack | 모든 인터랙티브 요소 라벨 |
+| 폰트 스케일링 | 시스템 설정 존중 |
+
+---
+
+# 16. 개발 순서 (Phase 계획)
+
+## MVP (Phase 0~6)
+
+| Phase | 내용 | 산출물 |
+|-------|------|--------|
+| 0 | 프로젝트 설정 | SSOT 문서, 파일 트리, Gradle |
+| 1 | 기반 구조 | 멀티모듈, DI, Core utils, Theme |
+| 2 | 데이터 레이어 | Room DB, Entities, DAOs, DataStore |
+| 3 | 스캔 시스템 | MediaStore 스캔, SourceFolder 관리 |
+| 4 | Gate 시스템 | 권한 처리, Gate 상태머신, GateScreen |
+| 5 | 재생 기초 | 단일 ExoPlayer, Queue, MediaSession |
+| 6 | UI 기초 | Navigation, Library, MiniPlayer, PlayerScreen |
+
+### ✅ MVP 체크포인트
+- 앱 설치 후 권한 요청 화면 표시
+- 권한 허용 + 폴더 선택 후 스캔 시작
+- 스캔된 트랙 리스트 표시
+- 트랙 탭하면 재생 시작
+- MiniPlayer 표시 및 기본 컨트롤
+- 전체 화면 플레이어
+- 백그라운드 재생 + 알림
+- 앱 재시작 시 세션 복원 (일시정지 상태)
+
+## Phase 2: 아카이브 강화
+
+- 앨범/아티스트 (그리드/리스트)
+- 태그 시스템 완성
+- 플레이리스트 (스마트/메타)
+- 고속 스크롤/섹션 인덱스
+- 검색 (FTS5) 완성
+- 가사 편집기
+
+## Phase 3: 고급 재생
+
+- 크로스페이드 (듀얼 플레이어)
+- 무음 건너뛰기 / EQ
+- 속도/피치/A-B 반복
+- Android Auto
+
+## Phase 4: 폴리싱
+
+- Ambient Background
+- Widget (Glance)
+- 백업/복원 완성
+- 성능 최적화
+- 접근성 검증
+
+## Phase 5: 릴리즈
+
+- 테스트 완료
+- ProGuard 최적화
+- Play Store 준비
+
+---
+
+# 부록 A: libs.versions.toml 전체
+
+```toml
+[versions]
+# Build Tools
+agp = "8.7.3"
+kotlin = "2.0.21"
+ksp = "2.0.21-1.0.28"
+
+# AndroidX Core
+coreKtx = "1.15.0"
+appcompat = "1.7.0"
+activityCompose = "1.9.3"
+lifecycleRuntimeK
