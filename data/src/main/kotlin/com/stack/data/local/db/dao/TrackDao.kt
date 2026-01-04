@@ -55,6 +55,9 @@ interface TrackDao {
     @Query("SELECT * FROM tracks WHERE content_uri = :contentUri")
     suspend fun getByContentUri(contentUri: String): TrackEntity?
 
+    @Query("SELECT * FROM tracks")
+    suspend fun getAllTracksOnce(): List<TrackEntity>
+
     // ===== Insert/Update =====
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
