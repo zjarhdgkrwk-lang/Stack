@@ -28,7 +28,8 @@ import javax.inject.Inject
 @HiltViewModel
 class LibraryViewModel @Inject constructor(
     private val trackRepository: TrackRepository,
-    private val scanLibraryUseCase: ScanLibraryUseCase
+    private val scanLibraryUseCase: ScanLibraryUseCase,
+    private val playerManager: com.stack.core.player.StackPlayerManager
 ) : BaseViewModel<State, Intent, Effect>(State()) {
 
     init {
@@ -194,11 +195,15 @@ class LibraryViewModel @Inject constructor(
     }
 
     /**
-     * TEMPORARY: Show toast instead of playing.
-     * Real playback will be implemented in Phase 4.3.
+     * Play track with current tracks as queue context.
+     * Phase 4.3: Now plays actual audio.
      */
     private fun onTrackClick(track: Track) {
-        emitEffect(Effect.ShowToast("TODO: Play ${track.displayTitle}"))
+        viewModelScope.launch {
+            // Get current visible tracks as queue context
+            val currentTracks = state.value.tracks
+            playerManager.play(track, currentTracks)
+        }
     }
 
     /**

@@ -38,6 +38,16 @@
             </intent-filter>
         </activity>
 
+        <!-- Media playback service (Phase 4.3) -->
+        <service
+            android:name="com.stack.feature.player.service.StackMediaService"
+            android:exported="false"
+            android:foregroundServiceType="mediaPlayback">
+            <intent-filter>
+                <action android:name="androidx.media3.session.MediaSessionService" />
+            </intent-filter>
+        </service>
+
     </application>
 
 </manifest>

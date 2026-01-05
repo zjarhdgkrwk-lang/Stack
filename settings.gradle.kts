@@ -24,6 +24,7 @@ rootProject.name = "Stack"
 
 include(":app")
 include(":core")
+include(":core:player")
 include(":data")
 include(":domain")
 include(":feature:gate")
