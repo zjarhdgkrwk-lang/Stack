@@ -1,0 +1,53 @@
+set -e
+
+OUT="stack_repo_report.txt"
+rm -f "$OUT"
+
+echo "==== 0) BASIC ====" >> "$OUT"
+echo "date: $(date)" >> "$OUT"
+echo "pwd: $(pwd)" >> "$OUT"
+echo "" >> "$OUT"
+
+echo "==== 1) GIT STATUS ====" >> "$OUT"
+git status -sb >> "$OUT" 2>&1 || true
+echo "" >> "$OUT"
+
+echo "==== 2) RECENT COMMITS (last 30) ====" >> "$OUT"
+git --no-pager log -30 --oneline --decorate >> "$OUT" 2>&1 || true
+echo "" >> "$OUT"
+
+echo "==== 3) TREE (top) ====" >> "$OUT"
+find . -maxdepth 3 -type f | sed 's|^\./||' | sort >> "$OUT"
+echo "" >> "$OUT"
+
+echo "==== 4) GRADLE FILES (head) ====" >> "$OUT"
+for f in settings.gradle.kts settings.gradle build.gradle.kts build.gradle gradle/libs.versions.toml app/build.gradle.kts app/build.gradle; do
+  if [ -f "$f" ]; then
+    echo "---- $f ----" >> "$OUT"
+    sed -n '1,200p' "$f" >> "$OUT"
+    echo "" >> "$OUT"
+  fi
+done
+
+echo "==== 5) ANDROID MANIFEST (head) ====" >> "$OUT"
+if [ -f "app/src/main/AndroidManifest.xml" ]; then
+  sed -n '1,220p' app/src/main/AndroidManifest.xml >> "$OUT"
+fi
+echo "" >> "$OUT"
+
+echo "==== 6) DEPENDENCY INSIGHT (compact) ====" >> "$OUT"
+./gradlew -q :app:dependencies >> "$OUT" 2>&1 || true
+echo "" >> "$OUT"
+
+echo "==== 7) BUILD / LINT (first failure only) ====" >> "$OUT"
+./gradlew clean :app:assembleDebug >> "$OUT" 2>&1 || true
+echo "" >> "$OUT"
+./gradlew :app:lintDebug >> "$OUT" 2>&1 || true
+echo "" >> "$OUT"
+
+echo "==== 8) KEY FILE SEARCH (Media3/Room/Scan) ====" >> "$OUT"
+grep -RIn --include="*.kt" -E "MediaSessionService|ExoPlayer|PlayerNotificationManager|RoomDatabase|@Database|MediaStore|DocumentFile|SAF|DataStore|Glance" app/src/main/java 2>/dev/null \
+  | head -n 300 >> "$OUT" || true
+echo "" >> "$OUT"
+
+echo "DONE -> $OUT"
