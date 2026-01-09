@@ -53,6 +53,7 @@ dependencies {
     implementation(project(":feature:gate"))
     implementation(project(":feature:library"))
     implementation(project(":feature:player"))
+    implementation(project(":feature:nowplaying"))
     implementation(project(":feature:search"))
     implementation(project(":feature:tags"))
     implementation(project(":feature:playlists"))

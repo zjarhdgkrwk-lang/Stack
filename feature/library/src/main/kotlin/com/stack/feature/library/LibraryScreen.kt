@@ -21,7 +21,8 @@ import com.stack.feature.library.components.*
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LibraryScreen(
-    onSearchClick: () -> Unit = {},  // Placeholder for Phase 4.4
+    onSearchClick: () -> Unit = {},
+    onSettingsClick: () -> Unit = {},
     viewModel: LibraryViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsState()
@@ -51,7 +52,8 @@ fun LibraryScreen(
             LibraryTopBar(
                 currentTab = state.currentTab,
                 onSearchClick = onSearchClick,
-                onSortClick = { viewModel.onIntent(Intent.ShowSortMenu) }
+                onSortClick = { viewModel.onIntent(Intent.ShowSortMenu) },
+                onSettingsClick = onSettingsClick
             )
         },
         bottomBar = {

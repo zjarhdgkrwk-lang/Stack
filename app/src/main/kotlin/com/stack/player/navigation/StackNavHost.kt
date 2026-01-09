@@ -1,5 +1,10 @@
 package com.stack.player.navigation
 
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Text
@@ -13,6 +18,9 @@ import androidx.navigation.compose.rememberNavController
 import com.stack.feature.gate.navigation.gateScreen
 import com.stack.feature.library.navigation.LIBRARY_ROUTE
 import com.stack.feature.library.navigation.libraryScreen
+import com.stack.feature.nowplaying.NowPlayingScreen
+import com.stack.feature.search.SearchScreen
+import com.stack.feature.settings.SettingsScreen
 
 @Composable
 fun StackNavHost(
@@ -43,28 +51,55 @@ fun StackNavHost(
         // Library screen - main music browsing
         libraryScreen(
             onSearchClick = {
-                // TODO: Navigate to search screen (Phase 4.4)
+                navController.navigate(NavRoutes.Search.route)
+            },
+            onSettingsClick = {
+                navController.navigate(NavRoutes.Settings.route)
             }
         )
+
+        // NowPlaying - Full-screen player (Phase 4.4)
+        composable(
+            route = NavRoutes.NowPlaying.route,
+            enterTransition = { slideInVertically(initialOffsetY = { it }, animationSpec = tween(300)) },
+            exitTransition = { slideOutVertically(targetOffsetY = { it }, animationSpec = tween(300)) }
+        ) {
+            NowPlayingScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        // Search screen (Phase 4.4)
+        composable(
+            route = NavRoutes.Search.route,
+            enterTransition = { fadeIn(animationSpec = tween(200)) },
+            exitTransition = { fadeOut(animationSpec = tween(200)) }
+        ) {
+            SearchScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        // Settings screen (Phase 4.4)
+        composable(
+            route = NavRoutes.Settings.route,
+            enterTransition = { fadeIn(animationSpec = tween(200)) },
+            exitTransition = { fadeOut(animationSpec = tween(200)) }
+        ) {
+            SettingsScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        // Placeholder screens for future phases
         composable(NavRoutes.Player.route) {
-            // TODO: Replace with PlayerScreen
             PlaceholderScreen("Player")
         }
-        composable(NavRoutes.Search.route) {
-            // TODO: Replace with SearchScreen
-            PlaceholderScreen("Search")
-        }
         composable(NavRoutes.Tags.route) {
-            // TODO: Replace with TagsScreen
             PlaceholderScreen("Tags")
         }
         composable(NavRoutes.Playlists.route) {
-            // TODO: Replace with PlaylistsScreen
             PlaceholderScreen("Playlists")
-        }
-        composable(NavRoutes.Settings.route) {
-            // TODO: Replace with SettingsScreen
-            PlaceholderScreen("Settings")
         }
     }
 }

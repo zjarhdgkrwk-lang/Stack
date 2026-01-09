@@ -7,7 +7,7 @@ plugins {
 }
 
 android {
-    namespace = "com.stack.feature.search"
+    namespace = "com.stack.feature.nowplaying"
     compileSdk = 35
 
     defaultConfig {
