@@ -3,6 +3,7 @@ package com.stack.data.repository
 import com.stack.data.local.db.dao.TrackDao
 import com.stack.data.local.db.dao.TrackFtsDao
 import com.stack.data.mapper.TrackMapper
+import com.stack.domain.model.Album
 import com.stack.domain.model.Track
 import com.stack.domain.model.TrackSortOrder
 import com.stack.domain.model.TrackStatus
@@ -147,6 +148,44 @@ class TrackRepositoryImpl @Inject constructor(
                 FolderInfo(
                     folderPath = result.folder_path,
                     displayPath = result.display_path,
+                    trackCount = result.track_count
+                )
+            }
+        }
+    }
+
+    // ===== Phase 5.1: Detail views =====
+
+    override fun observeAlbumWithTracks(albumId: Long): Flow<Pair<Album, List<Track>>> {
+        return trackDao.observeTracksByAlbum(albumId).map { entities ->
+            val tracks = TrackMapper.toDomainList(entities)
+            val firstTrack = tracks.firstOrNull()
+
+            val album = Album(
+                id = albumId,
+                name = firstTrack?.album ?: "",
+                artistId = firstTrack?.artistId ?: 0L,
+                artistName = firstTrack?.artist ?: "Unknown Artist",
+                artworkUri = firstTrack?.albumArtUri,
+                year = firstTrack?.year,
+                trackCount = tracks.size
+            )
+
+            Pair(album, tracks)
+        }
+    }
+
+    override fun observeAlbumsByArtist(artistId: Long): Flow<List<Album>> {
+        return trackDao.observeAlbumsByArtist(artistId).map { results ->
+            results.mapNotNull { result ->
+                val id = result.album_id ?: return@mapNotNull null
+                Album(
+                    id = id,
+                    name = result.album ?: "",
+                    artistId = result.artist_id ?: artistId,
+                    artistName = result.artist ?: "",
+                    artworkUri = result.album_art_uri,
+                    year = result.year,
                     trackCount = result.track_count
                 )
             }

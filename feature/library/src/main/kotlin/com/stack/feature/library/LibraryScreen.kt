@@ -23,6 +23,8 @@ import com.stack.feature.library.components.*
 fun LibraryScreen(
     onSearchClick: () -> Unit = {},
     onSettingsClick: () -> Unit = {},
+    onAlbumClick: (Long) -> Unit = {},
+    onArtistClick: (Long) -> Unit = {},
     viewModel: LibraryViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsState()
@@ -42,6 +44,12 @@ fun LibraryScreen(
                         is LibraryError.Unknown -> effect.error.message
                     }
                     Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                }
+                is Effect.NavigateToAlbum -> {
+                    onAlbumClick(effect.albumId)
+                }
+                is Effect.NavigateToArtist -> {
+                    onArtistClick(effect.artistId)
                 }
             }
         }

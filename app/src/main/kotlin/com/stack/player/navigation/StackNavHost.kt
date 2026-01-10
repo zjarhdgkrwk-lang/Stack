@@ -18,9 +18,13 @@ import androidx.navigation.compose.rememberNavController
 import com.stack.feature.gate.navigation.gateScreen
 import com.stack.feature.library.navigation.LIBRARY_ROUTE
 import com.stack.feature.library.navigation.libraryScreen
+import com.stack.feature.library.album.AlbumDetailScreen
+import com.stack.feature.library.artist.ArtistDetailScreen
 import com.stack.feature.nowplaying.NowPlayingScreen
 import com.stack.feature.search.SearchScreen
 import com.stack.feature.settings.SettingsScreen
+import androidx.navigation.NavType
+import androidx.navigation.navArgument
 
 @Composable
 fun StackNavHost(
@@ -55,6 +59,12 @@ fun StackNavHost(
             },
             onSettingsClick = {
                 navController.navigate(NavRoutes.Settings.route)
+            },
+            onAlbumClick = { albumId ->
+                navController.navigate(NavRoutes.AlbumDetail.createRoute(albumId))
+            },
+            onArtistClick = { artistId ->
+                navController.navigate(NavRoutes.ArtistDetail.createRoute(artistId))
             }
         )
 
@@ -88,6 +98,40 @@ fun StackNavHost(
         ) {
             SettingsScreen(
                 onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        // Album Detail screen (Phase 5.1)
+        composable(
+            route = NavRoutes.AlbumDetail.route,
+            arguments = listOf(navArgument("albumId") { type = NavType.StringType }),
+            enterTransition = { fadeIn(animationSpec = tween(200)) },
+            exitTransition = { fadeOut(animationSpec = tween(200)) }
+        ) { backStackEntry ->
+            val albumId = backStackEntry.arguments?.getString("albumId") ?: "0"
+            AlbumDetailScreen(
+                albumId = albumId,
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToArtist = { artistId ->
+                    navController.navigate(NavRoutes.ArtistDetail.createRoute(artistId))
+                }
+            )
+        }
+
+        // Artist Detail screen (Phase 5.1)
+        composable(
+            route = NavRoutes.ArtistDetail.route,
+            arguments = listOf(navArgument("artistId") { type = NavType.StringType }),
+            enterTransition = { fadeIn(animationSpec = tween(200)) },
+            exitTransition = { fadeOut(animationSpec = tween(200)) }
+        ) { backStackEntry ->
+            val artistId = backStackEntry.arguments?.getString("artistId") ?: "0"
+            ArtistDetailScreen(
+                artistId = artistId,
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToAlbum = { albumId ->
+                    navController.navigate(NavRoutes.AlbumDetail.createRoute(albumId))
+                }
             )
         }
 

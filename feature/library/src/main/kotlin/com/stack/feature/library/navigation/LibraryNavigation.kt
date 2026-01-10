@@ -15,12 +15,16 @@ fun NavController.navigateToLibrary() {
 
 fun NavGraphBuilder.libraryScreen(
     onSearchClick: () -> Unit,
-    onSettingsClick: () -> Unit
+    onSettingsClick: () -> Unit,
+    onAlbumClick: (Long) -> Unit,
+    onArtistClick: (Long) -> Unit
 ) {
     composable(route = LIBRARY_ROUTE) {
         LibraryScreen(
             onSearchClick = onSearchClick,
-            onSettingsClick = onSettingsClick
+            onSettingsClick = onSettingsClick,
+            onAlbumClick = onAlbumClick,
+            onArtistClick = onArtistClick
         )
     }
 }
