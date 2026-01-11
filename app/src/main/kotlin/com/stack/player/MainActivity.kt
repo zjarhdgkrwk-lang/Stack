@@ -19,7 +19,9 @@ import com.stack.domain.usecase.gate.GetGateReadyStatusUseCase
 import com.stack.feature.player.MiniPlayer
 import com.stack.feature.player.PlayerViewModel
 import com.stack.feature.player.service.StackMediaService
+import com.stack.player.navigation.NavRoutes
 import com.stack.player.navigation.StackNavHost
+import androidx.navigation.compose.rememberNavController
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 
@@ -43,6 +45,7 @@ class MainActivity : ComponentActivity() {
                 .collectAsStateWithLifecycle(initialValue = false)
 
             val playerState by playerViewModel.playerState.collectAsStateWithLifecycle()
+            val navController = rememberNavController()
 
             // Handle player events (Toast messages)
             LaunchedEffect(Unit) {
@@ -63,7 +66,10 @@ class MainActivity : ComponentActivity() {
                     Column(modifier = Modifier.fillMaxSize()) {
                         // Main navigation content
                         Box(modifier = Modifier.weight(1f)) {
-                            StackNavHost(isGateReady = isGateReady)
+                            StackNavHost(
+                                isGateReady = isGateReady,
+                                navController = navController
+                            )
                         }
 
                         // Mini player at bottom
@@ -71,7 +77,9 @@ class MainActivity : ComponentActivity() {
                             playerState = playerState,
                             onPlayPauseClick = playerViewModel::onPlayPauseClick,
                             onNextClick = playerViewModel::onNextClick,
-                            onMiniPlayerClick = playerViewModel::onMiniPlayerClick
+                            onMiniPlayerClick = {
+                                navController.navigate(NavRoutes.NowPlaying.route)
+                            }
                         )
                     }
                 }

@@ -7,24 +7,29 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.stack.domain.model.Track
 
 /**
  * Reusable track list item component.
  * Displays: Artwork (48dp), Title, Artist, Duration.
  *
- * IMPORTANT: This component is designed for reuse across:
+ * IMPORTANT: This component uses pure parameters (no domain dependency).
+ * It is designed for reuse across:
  * - TrackListScreen
- * - AlbumDetailScreen (future)
- * - PlaylistDetailScreen (future)
- * - SearchResultsScreen (future)
+ * - AlbumDetailScreen
+ * - PlaylistDetailScreen
+ * - SearchResultsScreen
  */
 @Composable
 fun TrackRow(
-    track: Track,
+    title: String,
+    artist: String,
+    albumArtUri: String?,
+    durationMs: Long,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    showTrackNumber: Boolean = false
+    albumName: String? = null,
+    trackNumber: Int? = null,
+    isPlaying: Boolean = false
 ) {
     ListItem(
         modifier = modifier
@@ -32,22 +37,23 @@ fun TrackRow(
             .clickable(onClick = onClick),
         leadingContent = {
             ArtworkImage(
-                uri = track.albumArtUri,
-                contentDescription = track.displayAlbum,
+                uri = albumArtUri,
+                contentDescription = albumName,
                 size = 48.dp
             )
         },
         headlineContent = {
             Text(
-                text = track.displayTitle,
+                text = title,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                style = MaterialTheme.typography.bodyLarge
+                style = MaterialTheme.typography.bodyLarge,
+                color = if (isPlaying) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
             )
         },
         supportingContent = {
             Text(
-                text = track.displayArtist,
+                text = artist,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 style = MaterialTheme.typography.bodyMedium,
@@ -56,7 +62,7 @@ fun TrackRow(
         },
         trailingContent = {
             Text(
-                text = formatDuration(track.duration),
+                text = formatDuration(durationMs),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

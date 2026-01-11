@@ -207,19 +207,17 @@ class LibraryViewModel @Inject constructor(
     }
 
     /**
-     * TEMPORARY: Show toast instead of navigating to album detail.
-     * Real navigation will be implemented in later phases.
+     * Navigate to album detail screen (Phase 5.1).
      */
     private fun onAlbumClick(album: AlbumUiModel) {
-        emitEffect(Effect.ShowToast("TODO: Open album ${album.name}"))
+        emitEffect(Effect.NavigateToAlbum(album.albumId))
     }
 
     /**
-     * TEMPORARY: Show toast instead of navigating to artist detail.
-     * Real navigation will be implemented in later phases.
+     * Navigate to artist detail screen (Phase 5.1).
      */
     private fun onArtistClick(artist: ArtistUiModel) {
-        emitEffect(Effect.ShowToast("TODO: Open artist ${artist.name}"))
+        emitEffect(Effect.NavigateToArtist(artist.artistId))
     }
 
     /**

@@ -1,5 +1,6 @@
 package com.stack.domain.repository
 
+import com.stack.domain.model.Album
 import com.stack.domain.model.Track
 import com.stack.domain.model.TrackSortOrder
 import com.stack.domain.model.TrackStatus
@@ -105,6 +106,18 @@ interface TrackRepository {
      * Get all unique folder paths.
      */
     fun observeFolders(): Flow<List<FolderInfo>>
+
+    // ===== Phase 5.1: Detail views =====
+
+    /**
+     * Get album with all its tracks for album detail screen.
+     */
+    fun observeAlbumWithTracks(albumId: Long): Flow<Pair<Album, List<Track>>>
+
+    /**
+     * Get all albums by an artist for artist detail screen.
+     */
+    fun observeAlbumsByArtist(artistId: Long): Flow<List<Album>>
 }
 
 /**

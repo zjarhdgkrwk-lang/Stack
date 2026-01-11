@@ -125,6 +125,7 @@ object LibraryContract {
     sealed class Effect {
         data class ShowToast(val message: String) : Effect()
         data class ShowError(val error: LibraryError) : Effect()
-        // Navigation will be added in Phase 4.3+ for detail screens
+        data class NavigateToAlbum(val albumId: Long) : Effect()
+        data class NavigateToArtist(val artistId: Long) : Effect()
     }
 }

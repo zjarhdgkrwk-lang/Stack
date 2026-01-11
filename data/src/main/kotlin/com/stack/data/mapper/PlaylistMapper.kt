@@ -20,6 +20,14 @@ object PlaylistMapper {
         )
     }
 
+    /**
+     * Convert entity to domain with default zero counts (for list mapping).
+     * Caller should populate trackCount and totalDuration separately.
+     */
+    fun toDomain(entity: PlaylistEntity): Playlist {
+        return toDomain(entity, trackCount = 0, totalDuration = 0L)
+    }
+
     fun toEntity(domain: Playlist): PlaylistEntity {
         return PlaylistEntity(
             id = domain.id,
@@ -31,5 +39,9 @@ object PlaylistMapper {
             createdAt = domain.createdAt,
             updatedAt = domain.updatedAt
         )
+    }
+
+    fun toDomainList(entities: List<PlaylistEntity>): List<Playlist> {
+        return entities.map { toDomain(it) }
     }
 }

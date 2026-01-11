@@ -5,9 +5,9 @@ import android.content.Intent
 import android.net.Uri
 import com.stack.core.logging.Logger
 import com.stack.core.util.Result
-import com.stack.data.scanner.ScanManager
-import com.stack.data.scanner.ScanTrigger
+import com.stack.domain.model.ScanTrigger
 import com.stack.domain.model.SourceFolder
+import com.stack.domain.repository.ScanRepository
 import com.stack.domain.repository.SourceFolderRepository
 import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
@@ -20,7 +20,7 @@ import javax.inject.Inject
  */
 class ManageSourceFoldersUseCase @Inject constructor(
     private val sourceFolderRepository: SourceFolderRepository,
-    private val scanManager: ScanManager,
+    private val scanRepository: ScanRepository,
     private val contentResolver: ContentResolver,
     private val logger: Logger
 ) {
@@ -63,7 +63,7 @@ class ManageSourceFoldersUseCase @Inject constructor(
                 ?: return Result.Error(Exception("Failed to retrieve saved folder"))
 
             // Step 4: Trigger scan for this folder (SSOT 5.1)
-            scanManager.queueDebouncedScan(ScanTrigger.SourceFolderAdded(treeUri))
+            scanRepository.queueDebouncedScan(ScanTrigger.SourceFolderAdded(treeUri.toString()))
 
             logger.d(TAG, "Added source folder: $displayName")
             Result.Success(savedFolder)

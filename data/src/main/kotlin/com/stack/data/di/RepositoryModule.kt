@@ -3,6 +3,7 @@ package com.stack.data.di
 import com.stack.data.repository.LyricsRepositoryImpl
 import com.stack.data.repository.PlayHistoryRepositoryImpl
 import com.stack.data.repository.PlaylistRepositoryImpl
+import com.stack.data.repository.ScanRepositoryImpl
 import com.stack.data.repository.SettingsRepositoryImpl
 import com.stack.data.repository.SourceFolderRepositoryImpl
 import com.stack.data.repository.TagRepositoryImpl
@@ -10,6 +11,7 @@ import com.stack.data.repository.TrackRepositoryImpl
 import com.stack.domain.repository.LyricsRepository
 import com.stack.domain.repository.PlayHistoryRepository
 import com.stack.domain.repository.PlaylistRepository
+import com.stack.domain.repository.ScanRepository
 import com.stack.domain.repository.SettingsRepository
 import com.stack.domain.repository.SourceFolderRepository
 import com.stack.domain.repository.TagRepository
@@ -65,4 +67,10 @@ abstract class RepositoryModule {
     abstract fun bindSettingsRepository(
         impl: SettingsRepositoryImpl
     ): SettingsRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindScanRepository(
+        impl: ScanRepositoryImpl
+    ): ScanRepository
 }

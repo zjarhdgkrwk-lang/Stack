@@ -21,7 +21,10 @@ import com.stack.feature.library.components.*
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LibraryScreen(
-    onSearchClick: () -> Unit = {},  // Placeholder for Phase 4.4
+    onSearchClick: () -> Unit = {},
+    onSettingsClick: () -> Unit = {},
+    onAlbumClick: (Long) -> Unit = {},
+    onArtistClick: (Long) -> Unit = {},
     viewModel: LibraryViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsState()
@@ -42,6 +45,12 @@ fun LibraryScreen(
                     }
                     Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
                 }
+                is Effect.NavigateToAlbum -> {
+                    onAlbumClick(effect.albumId)
+                }
+                is Effect.NavigateToArtist -> {
+                    onArtistClick(effect.artistId)
+                }
             }
         }
     }
@@ -51,7 +60,8 @@ fun LibraryScreen(
             LibraryTopBar(
                 currentTab = state.currentTab,
                 onSearchClick = onSearchClick,
-                onSortClick = { viewModel.onIntent(Intent.ShowSortMenu) }
+                onSortClick = { viewModel.onIntent(Intent.ShowSortMenu) },
+                onSettingsClick = onSettingsClick
             )
         },
         bottomBar = {

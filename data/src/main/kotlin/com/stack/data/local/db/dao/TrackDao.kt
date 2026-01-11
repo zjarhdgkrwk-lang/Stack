@@ -38,14 +38,39 @@ interface TrackDao {
     @Query("SELECT * FROM tracks WHERE folder_path = :folderPath AND status = 'ACTIVE'")
     fun observeTracksByFolder(folderPath: String): Flow<List<TrackEntity>>
 
-    @Query("SELECT * FROM tracks WHERE album_id = :albumId AND status = 'ACTIVE' ORDER BY track_number ASC")
+    @Query("""
+        SELECT * FROM tracks
+        WHERE album_id = :albumId AND status = 'ACTIVE'
+        ORDER BY disc_number ASC, track_number ASC, title COLLATE NOCASE ASC
+    """)
     fun observeTracksByAlbum(albumId: Long): Flow<List<TrackEntity>>
 
-    @Query("SELECT * FROM tracks WHERE artist_id = :artistId AND status = 'ACTIVE'")
+    @Query("""
+        SELECT * FROM tracks
+        WHERE artist_id = :artistId AND status = 'ACTIVE'
+        ORDER BY year DESC, album COLLATE NOCASE ASC, disc_number ASC, track_number ASC, title COLLATE NOCASE ASC
+    """)
     fun observeTracksByArtist(artistId: Long): Flow<List<TrackEntity>>
 
     @Query("SELECT * FROM tracks WHERE status = 'GHOST'")
     fun observeGhostTracks(): Flow<List<TrackEntity>>
+
+    // Phase 5.1: Album aggregation by artist
+    @Query("""
+        SELECT DISTINCT
+            album_id,
+            album,
+            artist_id,
+            artist,
+            year,
+            album_art_uri,
+            (SELECT COUNT(*) FROM tracks t2 WHERE t2.album_id = tracks.album_id AND t2.status = 'ACTIVE') as track_count
+        FROM tracks
+        WHERE artist_id = :artistId AND status = 'ACTIVE' AND album_id IS NOT NULL
+        GROUP BY album_id
+        ORDER BY year DESC, album COLLATE NOCASE ASC
+    """)
+    fun observeAlbumsByArtist(artistId: Long): Flow<List<AlbumDetailQueryResult>>
 
     // ===== Single Fetch =====
 
@@ -153,5 +178,19 @@ data class ArtistQueryResult(
 data class FolderQueryResult(
     val folder_path: String,
     val display_path: String,
+    val track_count: Int
+)
+
+/**
+ * Query result for album detail (used in artist detail).
+ * Phase 5.1
+ */
+data class AlbumDetailQueryResult(
+    val album_id: Long?,
+    val album: String?,
+    val artist_id: Long?,
+    val artist: String?,
+    val year: Int?,
+    val album_art_uri: String?,
     val track_count: Int
 )
