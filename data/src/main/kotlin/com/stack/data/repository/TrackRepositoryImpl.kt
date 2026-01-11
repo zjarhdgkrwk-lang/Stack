@@ -23,15 +23,30 @@ class TrackRepositoryImpl @Inject constructor(
 ) : TrackRepository {
 
     override fun observeTracks(sortOrder: TrackSortOrder): Flow<List<Track>> {
-        return when (sortOrder) {
+        // For sort orders without dedicated DAO methods, use date_added and apply in-memory sorting
+        val baseFlow = when (sortOrder) {
             TrackSortOrder.TITLE_ASC -> trackDao.observeTracksByTitleAsc()
             TrackSortOrder.TITLE_DESC -> trackDao.observeTracksByTitleDesc()
             TrackSortOrder.ARTIST_ASC -> trackDao.observeTracksByArtistAsc()
             TrackSortOrder.ARTIST_DESC -> trackDao.observeTracksByArtistDesc()
             TrackSortOrder.DATE_ADDED_ASC -> trackDao.observeTracksByDateAddedAsc()
             TrackSortOrder.DATE_ADDED_DESC -> trackDao.observeTracksByDateAddedDesc()
-        }.map { entities ->
-            TrackMapper.toDomainList(entities)
+            // Fall back to date_added for sort orders without dedicated DAO methods
+            else -> trackDao.observeTracksByDateAddedDesc()
+        }
+
+        return baseFlow.map { entities ->
+            val tracks = TrackMapper.toDomainList(entities)
+            // Apply in-memory sorting for non-DAO-supported sort orders
+            when (sortOrder) {
+                TrackSortOrder.ALBUM_ASC,
+                TrackSortOrder.ALBUM_DESC,
+                TrackSortOrder.DURATION_ASC,
+                TrackSortOrder.DURATION_DESC,
+                TrackSortOrder.YEAR_ASC,
+                TrackSortOrder.YEAR_DESC -> applySorting(tracks, sortOrder)
+                else -> tracks
+            }
         }
     }
 
@@ -197,12 +212,18 @@ class TrackRepositoryImpl @Inject constructor(
      */
     private fun applySorting(tracks: List<Track>, sortOrder: TrackSortOrder): List<Track> {
         return when (sortOrder) {
-            TrackSortOrder.TITLE_ASC -> tracks.sortedBy { it.title }
-            TrackSortOrder.TITLE_DESC -> tracks.sortedByDescending { it.title }
-            TrackSortOrder.ARTIST_ASC -> tracks.sortedBy { it.artist }
-            TrackSortOrder.ARTIST_DESC -> tracks.sortedByDescending { it.artist }
+            TrackSortOrder.TITLE_ASC -> tracks.sortedBy { it.title.lowercase() }
+            TrackSortOrder.TITLE_DESC -> tracks.sortedByDescending { it.title.lowercase() }
+            TrackSortOrder.ARTIST_ASC -> tracks.sortedBy { it.artist?.lowercase() }
+            TrackSortOrder.ARTIST_DESC -> tracks.sortedByDescending { it.artist?.lowercase() }
+            TrackSortOrder.ALBUM_ASC -> tracks.sortedBy { it.album?.lowercase() }
+            TrackSortOrder.ALBUM_DESC -> tracks.sortedByDescending { it.album?.lowercase() }
             TrackSortOrder.DATE_ADDED_ASC -> tracks.sortedBy { it.dateAdded }
             TrackSortOrder.DATE_ADDED_DESC -> tracks.sortedByDescending { it.dateAdded }
+            TrackSortOrder.DURATION_ASC -> tracks.sortedBy { it.duration }
+            TrackSortOrder.DURATION_DESC -> tracks.sortedByDescending { it.duration }
+            TrackSortOrder.YEAR_ASC -> tracks.sortedBy { it.year ?: 0 }
+            TrackSortOrder.YEAR_DESC -> tracks.sortedByDescending { it.year ?: 0 }
         }
     }
 }

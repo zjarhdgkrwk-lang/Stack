@@ -32,9 +32,8 @@ class PlayHistoryRepositoryImpl @Inject constructor(
         val entity = PlayHistoryEntity(
             trackId = trackId,
             playedAt = now,
-            playDuration = playedDuration,
-            playCompletionRate = if (completed) 1.0f else 0.0f,
-            playSource = "player", // Default source
+            playedDuration = playedDuration,
+            completed = completed,
             weekKey = weekKey
         )
 
@@ -56,9 +55,9 @@ class PlayHistoryRepositoryImpl @Inject constructor(
             results.map { result ->
                 WeeklyStat(
                     weekKey = result.week_key,
+                    trackId = result.track_id,
                     playCount = result.play_count,
-                    totalDuration = result.total_duration,
-                    uniqueTrackCount = 1 // This is per track, so always 1
+                    totalDuration = result.total_duration
                 )
             }
         }
@@ -70,9 +69,9 @@ class PlayHistoryRepositoryImpl @Inject constructor(
         return TrackPlayStats(
             trackId = trackId,
             totalPlayCount = result.total_play_count,
-            totalDuration = result.total_duration,
-            lastPlayed = result.last_played,
-            firstPlayed = result.first_played ?: 0L
+            totalPlayDuration = result.total_duration,
+            lastPlayedAt = result.last_played,
+            firstPlayedAt = result.first_played
         )
     }
 

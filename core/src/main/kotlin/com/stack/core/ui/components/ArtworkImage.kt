@@ -1,5 +1,6 @@
 package com.stack.core.ui.components
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
@@ -15,7 +16,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import coil3.compose.AsyncImage
+import coil3.compose.SubcomposeAsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
 
@@ -48,7 +49,7 @@ fun ArtworkImage(
             modifier = modifier.size(size)
         )
     } else {
-        AsyncImage(
+        SubcomposeAsyncImage(
             model = ImageRequest.Builder(context)
                 .data(uri)
                 .crossfade(true)
@@ -58,7 +59,13 @@ fun ArtworkImage(
             modifier = modifier
                 .size(size)
                 .clip(MaterialTheme.shapes.small),
-            onError = {
+            loading = {
+                ArtworkPlaceholder(
+                    contentDescription = contentDescription,
+                    modifier = Modifier.size(size)
+                )
+            },
+            error = {
                 ArtworkPlaceholder(
                     contentDescription = contentDescription,
                     modifier = Modifier.size(size)

@@ -10,9 +10,9 @@ object PlayHistoryMapper {
             id = entity.id,
             trackId = entity.trackId,
             playedAt = entity.playedAt,
-            playDuration = entity.playDuration,
-            playCompletionRate = entity.playCompletionRate,
-            playSource = entity.playSource
+            playedDuration = entity.playedDuration,
+            completed = entity.completed,
+            weekKey = entity.weekKey
         )
     }
 
@@ -21,9 +21,9 @@ object PlayHistoryMapper {
             id = domain.id,
             trackId = domain.trackId,
             playedAt = domain.playedAt,
-            playDuration = domain.playDuration,
-            playCompletionRate = domain.playCompletionRate,
-            playSource = domain.playSource
+            playedDuration = domain.playedDuration,
+            completed = domain.completed,
+            weekKey = domain.weekKey
         )
     }
 

@@ -77,33 +77,3 @@ abstract class BaseViewModel<S, I, E>(
         sendEffect(effect)
     }
 }
-
-/**
- * Marker interface for UI State.
- * All screen states should be immutable data classes.
- */
-interface UiState
-
-/**
- * Common loading state representation.
- */
-sealed interface LoadingState {
-    data object Idle : LoadingState
-    data object Loading : LoadingState
-    data class Error(val message: String, val throwable: Throwable? = null) : LoadingState
-    data object Success : LoadingState
-}
-
-/**
- * Marker interface for one-time UI events/effects.
- */
-interface UiEvent
-
-/**
- * Common UI events that can be used across screens.
- */
-sealed interface CommonUiEvent : UiEvent {
-    data class ShowSnackbar(val message: String) : CommonUiEvent
-    data class ShowToast(val message: String) : CommonUiEvent
-    data object NavigateBack : CommonUiEvent
-}

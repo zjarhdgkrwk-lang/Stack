@@ -47,7 +47,11 @@ fun TrackListScreen(
                 key = { track -> track.id }  // CRITICAL: Stable key for performance
             ) { track ->
                 TrackRow(
-                    track = track,
+                    title = track.displayTitle,
+                    artist = track.displayArtist,
+                    albumArtUri = track.albumArtUri,
+                    durationMs = track.duration,
+                    albumName = track.displayAlbum,
                     onClick = { onTrackClick(track) }
                 )
             }
